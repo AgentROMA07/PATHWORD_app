@@ -72,7 +72,7 @@ class TaxiWebSocketClient @Inject constructor(
     }
 
     override fun createOrder(request: OrderRequest) {
-        val msg = WsMessage("create_order", request)
+        val msg = WsMessage("NEW_ORDER", request)
         webSocket?.send(gson.toJson(msg))
     }
 

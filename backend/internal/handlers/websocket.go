@@ -124,7 +124,7 @@ func (m *WsManager) handleMessage(senderID uint, msg models.WsMessage) {
 			log.Printf("Failed to update GPS for driver %d: %v", senderID, err)
 		}
 
-	case "create_order":
+	case "NEW_ORDER":
 		payloadBytes, _ := json.Marshal(msg.Payload)
 		var req models.OrderRequest
 		json.Unmarshal(payloadBytes, &req)

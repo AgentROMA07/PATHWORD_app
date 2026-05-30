@@ -78,6 +78,15 @@ fun DriverScreen(
                                 var suggestedPrice by remember { mutableStateOf(order.price) }
                                 Column(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
                                     Text("Passenger ${order.passengerId} to ${order.destination.lat}, ${order.destination.lng}")
+                                    Text("Price: ${order.price}")
+
+                                    Button(
+                                        onClick = { viewModel.sendBid(order.id, order.price) },
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                    ) {
+                                        Text("Accept")
+                                    }
+
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -89,7 +98,7 @@ fun DriverScreen(
                                             modifier = Modifier.weight(1f).padding(end = 8.dp)
                                         )
                                         Button(onClick = { viewModel.sendBid(order.id, suggestedPrice) }) {
-                                            Text("Bid")
+                                            Text("Counter-offer")
                                         }
                                     }
                                 }
