@@ -43,6 +43,9 @@ fun PassengerScreen(
     }
 
     val markers = mutableListOf<MapMarker>()
+    // Add current passenger location (mocked)
+    markers.add(MapMarker("passenger", MapLocation(43.238949, 76.889709), "Me"))
+
     state.destination?.let { dest ->
         markers.add(MapMarker("dest", MapLocation(dest.lat, dest.lng), "Destination"))
     }
@@ -66,6 +69,21 @@ fun PassengerScreen(
                     }
                 }
             )
+
+            // ETA Card if destination is selected
+            if (state.destination != null && !state.rideStarted) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Estimated Time: 15 mins",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
 
             if (state.rideStarted) {
                 Card(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {

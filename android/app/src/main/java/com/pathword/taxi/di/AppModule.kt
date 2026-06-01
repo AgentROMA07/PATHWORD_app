@@ -5,7 +5,7 @@ import com.pathword.taxi.data.network.TaxiWebSocketClient
 import com.pathword.taxi.domain.repository.ITaxiRepository
 import android.content.Context
 import android.content.SharedPreferences
-import com.pathword.taxi.map.GoogleMapProvider
+import com.pathword.taxi.map.MapboxMapProvider
 import com.pathword.taxi.map.IMapProvider
 import dagger.Module
 import dagger.Provides
@@ -43,7 +43,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMapProvider(): IMapProvider {
-        return GoogleMapProvider()
+        return MapboxMapProvider()
     }
 
     @Provides
