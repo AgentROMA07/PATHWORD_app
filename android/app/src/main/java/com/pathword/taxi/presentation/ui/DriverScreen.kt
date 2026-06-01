@@ -22,6 +22,14 @@ fun DriverScreen(
     viewModel: DriverViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
 
     val markers = mutableListOf<MapMarker>()
     markers.add(
@@ -34,6 +42,7 @@ fun DriverScreen(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Driver Mode") },

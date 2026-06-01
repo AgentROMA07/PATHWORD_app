@@ -20,7 +20,8 @@ data class PassengerState(
     val activeOrderId: String? = null,
     val bids: List<Bid> = emptyList(),
     val rideStarted: Boolean = false,
-    val acceptedBid: Bid? = null
+    val acceptedBid: Bid? = null,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -44,6 +45,15 @@ class PassengerViewModel @Inject constructor(
                 _state.value = _state.value.copy(rideStarted = true, acceptedBid = bid)
             }
         }
+        viewModelScope.launch {
+            repository.errorMessages.collect { msg ->
+                _state.value = _state.value.copy(errorMessage = msg)
+            }
+        }
+    }
+
+    fun clearError() {
+        _state.value = _state.value.copy(errorMessage = null)
     }
 
     fun connect() {

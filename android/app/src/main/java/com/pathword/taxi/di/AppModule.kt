@@ -3,11 +3,14 @@ package com.pathword.taxi.di
 import com.google.gson.Gson
 import com.pathword.taxi.data.network.TaxiWebSocketClient
 import com.pathword.taxi.domain.repository.ITaxiRepository
+import android.content.Context
+import android.content.SharedPreferences
 import com.pathword.taxi.map.GoogleMapProvider
 import com.pathword.taxi.map.IMapProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
@@ -41,5 +44,11 @@ object AppModule {
     @Singleton
     fun provideMapProvider(): IMapProvider {
         return GoogleMapProvider()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
+        return context.getSharedPreferences("taxi_prefs", Context.MODE_PRIVATE)
     }
 }
