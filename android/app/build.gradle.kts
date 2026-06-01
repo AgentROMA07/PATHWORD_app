@@ -77,4 +77,8 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.0")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    // Mapbox
+    implementation("com.mapbox.extension:maps-compose:11.2.0")
+    implementation("com.mapbox.maps:android:11.2.0")
 }
