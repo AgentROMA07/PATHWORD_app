@@ -23,6 +23,14 @@ fun PassengerScreen(
     viewModel: PassengerViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.connect()
@@ -40,6 +48,7 @@ fun PassengerScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(title = { Text("Passenger Mode") }, navigationIcon = {
                 Button(onClick = onBack) { Text("Back") }

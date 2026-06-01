@@ -27,15 +27,18 @@ type Client struct {
 }
 
 type WsManager struct {
-	clients    map[uint]*Client
-	mutex      sync.RWMutex
-	redisRepo  *repository.RedisRepo
+	clients     map[uint]*Client
+	mutex       sync.RWMutex
+	redisRepo   *repository.RedisRepo
+	ordersState map[string]string // "pending", "accepted", "cancelled"
+	ordersMutex sync.RWMutex
 }
 
 func NewWsManager(redisRepo *repository.RedisRepo) *WsManager {
 	return &WsManager{
-		clients:   make(map[uint]*Client),
-		redisRepo: redisRepo,
+		clients:     make(map[uint]*Client),
+		redisRepo:   redisRepo,
+		ordersState: make(map[string]string),
 	}
 }
 
@@ -137,6 +140,10 @@ func (m *WsManager) handleMessage(senderID uint, msg models.WsMessage) {
 			Status:      "pending",
 		}
 
+		m.ordersMutex.Lock()
+		m.ordersState[order.ID] = "pending"
+		m.ordersMutex.Unlock()
+
 		driversStr, err := m.redisRepo.FindNearbyDrivers(context.Background(), req.Destination, 5.0)
 
 		wsMsg := models.WsMessage{
@@ -154,6 +161,17 @@ func (m *WsManager) handleMessage(senderID uint, msg models.WsMessage) {
 			m.broadcastToAll(wsMsg)
 		}
 
+	case "CANCEL_ORDER":
+		payloadBytes, _ := json.Marshal(msg.Payload)
+		var cancelReq struct {
+			OrderID string `json:"order_id"`
+		}
+		json.Unmarshal(payloadBytes, &cancelReq)
+
+		m.ordersMutex.Lock()
+		m.ordersState[cancelReq.OrderID] = "cancelled"
+		m.ordersMutex.Unlock()
+
 	case "bid":
 		payloadBytes, _ := json.Marshal(msg.Payload)
 		var bid models.Bid
@@ -169,6 +187,19 @@ func (m *WsManager) handleMessage(senderID uint, msg models.WsMessage) {
 		payloadBytes, _ := json.Marshal(msg.Payload)
 		var bid models.Bid
 		json.Unmarshal(payloadBytes, &bid)
+
+		m.ordersMutex.Lock()
+		state := m.ordersState[bid.OrderID]
+		if state == "cancelled" || state == "accepted" {
+			m.ordersMutex.Unlock()
+			m.sendToUser(senderID, models.WsMessage{
+				Type:    "error",
+				Payload: "Order is no longer available",
+			})
+			return
+		}
+		m.ordersState[bid.OrderID] = "accepted"
+		m.ordersMutex.Unlock()
 
 		m.sendToUser(bid.DriverID, models.WsMessage{
 			Type: "ride_started",
@@ -187,9 +218,15 @@ func (m *WsManager) broadcastToAll(msg models.WsMessage) {
 	if err != nil {
 		return
 	}
+
 	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+	clientsCopy := make([]*Client, 0, len(m.clients))
 	for _, client := range m.clients {
+		clientsCopy = append(clientsCopy, client)
+	}
+	m.mutex.RUnlock()
+
+	for _, client := range clientsCopy {
 		select {
 		case client.Send <- bytes:
 		default:
@@ -203,9 +240,12 @@ func (m *WsManager) sendToUser(userID uint, msg models.WsMessage) {
 	if err != nil {
 		return
 	}
+
 	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	if client, ok := m.clients[userID]; ok {
+	client, ok := m.clients[userID]
+	m.mutex.RUnlock()
+
+	if ok {
 		select {
 		case client.Send <- bytes:
 		default:

@@ -18,4 +18,5 @@ interface ITaxiRepository {
     val incomingOrders: Flow<Order>
     val incomingBids: Flow<Bid>
     val rideStarted: Flow<Bid>
+    val errorMessages: Flow<String>
 }
