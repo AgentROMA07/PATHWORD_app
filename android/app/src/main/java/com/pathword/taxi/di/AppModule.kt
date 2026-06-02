@@ -76,8 +76,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideMapProvider(): IMapProvider {
-        return TwoGisMapProvider()
+    fun provideMapProvider(routingRepository: com.pathword.taxi.domain.repository.IRoutingRepository): IMapProvider {
+        return TwoGisMapProvider(routingRepository)
     }
 
     @Provides
