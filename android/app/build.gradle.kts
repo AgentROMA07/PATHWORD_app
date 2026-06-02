@@ -78,7 +78,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
 
-    // Mapbox
-    implementation("com.mapbox.extension:maps-compose:11.2.0")
-    implementation("com.mapbox.maps:android:11.2.0")
+    // 2GIS
+    implementation("ru.dgis.sdk:sdk-map:13.0.0")
+    implementation("ru.dgis.sdk:compose-map:13.0.0")
 }

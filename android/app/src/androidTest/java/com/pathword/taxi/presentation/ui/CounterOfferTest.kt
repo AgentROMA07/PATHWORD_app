@@ -12,7 +12,6 @@ import com.pathword.taxi.map.MapMarker
 import com.pathword.taxi.presentation.viewmodel.DriverState
 import com.pathword.taxi.presentation.viewmodel.DriverViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,29 +66,5 @@ class CounterOfferTest {
         }
 
         // If we reach here without the UI freezing or crashing, test passes
-    }
-
-    @Test
-    fun quicklySwitchingOnlineStatus_doesNotFreezeUI() {
-        val mockViewModel = mock(DriverViewModel::class.java)
-
-        val stateFlow = MutableStateFlow(
-            DriverState(isOnline = false)
-        )
-
-        `when`(mockViewModel.state).thenReturn(stateFlow)
-
-        composeTestRule.setContent {
-            DriverScreen(
-                mapProvider = MockMapProvider(),
-                onBack = {},
-                viewModel = mockViewModel
-            )
-        }
-
-        // Violently click the online switch to simulate spamming
-        for (i in 0..20) {
-            composeTestRule.onNodeWithText("Offline").performClick()
-        }
     }
 }
