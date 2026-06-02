@@ -1,6 +1,7 @@
 package com.pathword.taxi.map
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -22,8 +23,14 @@ import ru.dgis.sdk.map.lpx
 import ru.dgis.sdk.map.Zoom
 import ru.dgis.sdk.map.imageFromResource
 import ru.dgis.sdk.DGis
+import com.pathword.taxi.domain.repository.IRoutingRepository
+import com.pathword.taxi.domain.model.Location
+import android.animation.ValueAnimator
+import android.view.animation.LinearInterpolator
 
-class TwoGisMapProvider : IMapProvider {
+class Ref<T>(var value: T)
+
+class TwoGisMapProvider(private val routingRepository: IRoutingRepository) : IMapProvider {
     @Composable
     override fun MapView(
         modifier: Modifier,
@@ -33,6 +40,32 @@ class TwoGisMapProvider : IMapProvider {
     ) {
         var mapObjectManager by remember { mutableStateOf<MapObjectManager?>(null) }
         var map by remember { mutableStateOf<DGisMap?>(null) }
+
+        var routePoints by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
+        val markerMap = remember { mutableMapOf<String, Marker>() }
+        val animatorMap = remember { mutableMapOf<String, ValueAnimator>() }
+        val polylineRef = remember { Ref<Polyline?>(null) }
+        val currentRouteRef = remember { Ref<List<GeoPoint>>(emptyList()) }
+
+        val pLoc = markers.firstOrNull { it.id == "passenger" }?.location ?: initialLocation
+        val dLoc = markers.firstOrNull { it.id == "dest" }?.location
+
+        LaunchedEffect(pLoc, dLoc) {
+            if (dLoc != null) {
+                val routeStr = routingRepository.getRoute(
+                    Location(pLoc.lat, pLoc.lng),
+                    Location(dLoc.lat, dLoc.lng)
+                )
+                if (routeStr != null) {
+                    val decoded = PolylineDecoder.decode(routeStr)
+                    routePoints = decoded.map { GeoPoint(latitude = it.lat, longitude = it.lng) }
+                } else {
+                    routePoints = emptyList()
+                }
+            } else {
+                routePoints = emptyList()
+            }
+        }
 
         AndroidView(
             factory = { context ->
@@ -58,48 +91,71 @@ class TwoGisMapProvider : IMapProvider {
                 val dgisMap = map ?: return@AndroidView
                 val context = DGis.context()
 
-                manager.removeAll()
+                val currentIds = markers.map { it.id }.toSet()
+                val idsToRemove = markerMap.keys.toList() - currentIds
+                idsToRemove.forEach { id ->
+                    markerMap[id]?.let { manager.removeObject(it) }
+                    markerMap.remove(id)
+                    animatorMap[id]?.cancel()
+                    animatorMap.remove(id)
+                }
 
-                var hasDestination = false
+                markers.forEach { markerData ->
+                    val point = GeoPoint(latitude = markerData.location.lat, longitude = markerData.location.lng)
+                    val existingMarker = markerMap[markerData.id]
 
-                markers.forEach { marker ->
-                    val point = GeoPoint(latitude = marker.location.lat, longitude = marker.location.lng)
-                    if (marker.id == "dest") {
-                        hasDestination = true
-                    }
-
-                    // We can handle rotation/animation manually via coroutines or ValueAnimator on the view update side
-                    // updating position of a stored reference, but for now we re-create the marker representing state
-                    manager.addObject(
-                        Marker(
+                    if (existingMarker == null) {
+                        val newMarker = Marker(
                             MarkerOptions(
-                                position = ru.dgis.sdk.geometry.GeoPointWithElevation(point.latitude, point.longitude),
-                                text = marker.title ?: "",
+                                position = point,
+                                text = markerData.title ?: "",
                                 icon = imageFromResource(context, android.R.drawable.ic_menu_myplaces)
                             )
                         )
-                    )
+                        manager.addObject(newMarker)
+                        markerMap[markerData.id] = newMarker
+                    } else {
+                        val oldPos = existingMarker.position
+                        // Only animate if the position actually changed
+                        if (oldPos.latitude.value != point.latitude.value || oldPos.longitude.value != point.longitude.value) {
+                            animatorMap[markerData.id]?.cancel()
+
+                            val animator = ValueAnimator.ofFloat(0f, 1f)
+                            animator.duration = 1000
+                            animator.interpolator = LinearInterpolator()
+                            animator.addUpdateListener { anim ->
+                                val fraction = anim.animatedValue as Float
+                                val lat = oldPos.latitude.value + (point.latitude.value - oldPos.latitude.value) * fraction
+                                val lng = oldPos.longitude.value + (point.longitude.value - oldPos.longitude.value) * fraction
+                                existingMarker.position = GeoPoint(
+                                    latitude = lat,
+                                    longitude = lng
+                                )
+                            }
+                            animator.start()
+                            animatorMap[markerData.id] = animator
+                        }
+                        existingMarker.text = markerData.title ?: ""
+                    }
                 }
 
-                if (hasDestination) {
-                    val pLoc = markers.firstOrNull { it.id == "passenger" }?.location ?: initialLocation
-                    val dLoc = markers.firstOrNull { it.id == "dest" }?.location
-                    if (dLoc != null) {
-                        // Drawing line
-                        val points = listOf(
-                            GeoPoint(latitude = pLoc.lat, longitude = pLoc.lng),
-                            GeoPoint(latitude = (pLoc.lat + dLoc.lat) / 2 - 0.01, longitude = (pLoc.lng + dLoc.lng) / 2 + 0.01),
-                            GeoPoint(latitude = dLoc.lat, longitude = dLoc.lng)
-                        )
-                        manager.addObject(
-                            Polyline(
-                                PolylineOptions(
-                                    points = points,
-                                    width = 5.lpx
-                                )
+                if (routePoints != currentRouteRef.value) {
+                    val existingPolyline = polylineRef.value
+                    if (existingPolyline != null) {
+                        manager.removeObject(existingPolyline)
+                        polylineRef.value = null
+                    }
+                    if (routePoints.isNotEmpty()) {
+                        val newPolyline = Polyline(
+                            PolylineOptions(
+                                points = routePoints,
+                                width = 5.lpx
                             )
                         )
+                        manager.addObject(newPolyline)
+                        polylineRef.value = newPolyline
                     }
+                    currentRouteRef.value = routePoints
                 }
             }
         )
