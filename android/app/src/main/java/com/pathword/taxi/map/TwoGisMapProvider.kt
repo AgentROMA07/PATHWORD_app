@@ -18,6 +18,7 @@ import ru.dgis.sdk.map.MarkerOptions
 import ru.dgis.sdk.map.Polyline
 import ru.dgis.sdk.map.PolylineOptions
 import ru.dgis.sdk.coordinates.GeoPoint
+import ru.dgis.sdk.geometry.GeoPointWithElevation
 import ru.dgis.sdk.map.LogicalPixel
 import ru.dgis.sdk.map.lpx
 import ru.dgis.sdk.map.Zoom
@@ -102,12 +103,13 @@ class TwoGisMapProvider(private val routingRepository: IRoutingRepository) : IMa
 
                 markers.forEach { markerData ->
                     val point = GeoPoint(latitude = markerData.location.lat, longitude = markerData.location.lng)
+                    val pointWithElevation = GeoPointWithElevation(latitude = markerData.location.lat, longitude = markerData.location.lng)
                     val existingMarker = markerMap[markerData.id]
 
                     if (existingMarker == null) {
                         val newMarker = Marker(
                             MarkerOptions(
-                                position = point,
+                                position = pointWithElevation,
                                 text = markerData.title ?: "",
                                 icon = imageFromResource(context, android.R.drawable.ic_menu_myplaces)
                             )
@@ -127,7 +129,7 @@ class TwoGisMapProvider(private val routingRepository: IRoutingRepository) : IMa
                                 val fraction = anim.animatedValue as Float
                                 val lat = oldPos.latitude.value + (point.latitude.value - oldPos.latitude.value) * fraction
                                 val lng = oldPos.longitude.value + (point.longitude.value - oldPos.longitude.value) * fraction
-                                existingMarker.position = GeoPoint(
+                                existingMarker.position = GeoPointWithElevation(
                                     latitude = lat,
                                     longitude = lng
                                 )
